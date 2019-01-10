@@ -59,7 +59,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('prob', models.FloatField(default=0.0)),
                 ('manual', models.BooleanField(default=False)),
-                ('text', models.TextField()),
+                ('text', models.CharField(max_length=8192)),
                 ('document', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='seq2seq_annotations', to='server.Document')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
@@ -103,7 +103,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='seq2seqannotation',
-            unique_together={('document', 'user', 'text')},
+            # unique_together={('document', 'user', 'text')},
+            unique_together={('document', 'user')},
         ),
         migrations.AlterUniqueTogether(
             name='label',

@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 import os
 import django_heroku
 import dj_database_url
+import pymysql
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -88,10 +89,22 @@ WSGI_APPLICATION = 'app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
+
+pymysql.install_as_MySQLdb()
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'doccano',
+        'USER': 'root',
+        'PASSWORD': '4rfv%TGB6yhn',    # 配置为空表示无密码
+        'HOST': '127.0.0.1',           # 配置为空标识连接的是当前PC
+        'PORT': '3306'
     }
 }
 
