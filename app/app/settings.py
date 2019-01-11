@@ -14,6 +14,8 @@ import os
 import django_heroku
 import dj_database_url
 import pymysql
+import time
+import logging
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -92,7 +94,7 @@ WSGI_APPLICATION = 'app.wsgi.application'
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#         'NAME': os.path.join(BASE_DIR, 'doccano.sqlite3'),
 #     }
 # }
 
@@ -135,7 +137,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 5,
+    'PAGE_SIZE': 10,
     'DEFAULT_FILTER_BACKENDS': ('django_filters.rest_framework.DjangoFilterBackend',),
     'SEARCH_PARAM': 'q',
 }
@@ -173,3 +175,84 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 #ALLOWED_HOSTS = ['*']
 
 django_heroku.settings(locals())
+
+# log_path是存放日志的路径
+cur_path = os.path.dirname(os.path.realpath(__file__))
+log_path = os.path.join(os.path.dirname(cur_path), 'logs')
+# 如果不存在这个logs文件夹，就自动创建一个
+if not os.path.exists(log_path):
+    os.mkdir(log_path)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+    'formatters': {
+        # 日志格式
+        'standard': {
+            'format': '%(asctime)s [%(threadName)s:%(thread)d] [%(filename)s:%(lineno)d] [%(module)s:%(funcName)s] '
+                      '[%(levelname)s]- %(message)s'},
+        # 简单格式
+        'simple': {
+            'format': '%(levelname)s %(message)s'
+        },
+    },
+    # 过滤
+    'filters': {
+    },
+    # 定义具体处理日志的方式
+    'handlers': {
+        # 默认记录所有日志
+        'default': {
+            'level': 'INFO',
+            # handlers.RotatingFileHandler 将日志消息写入文件filename，如果文件的大小超出maxBytes制定的值，那么它将被备份为filename1
+            'class': 'logging.handlers.RotatingFileHandler',
+            # all.log 输入系统日志，info日志和error日志
+            'filename': os.path.join(log_path, 'all-{}.log'.format(time.strftime('%Y_%m_%d'))),
+            'maxBytes': 1024 * 1024 * 5,  # 文件大小
+            'backupCount': 5,  # 备份数
+            'formatter': 'standard',  # 输出格式
+        },
+        # 输出错误日志
+        'error': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            # error.log 只输入错误日志
+            'filename': os.path.join(log_path, 'error-{}.log'.format(time.strftime('%Y_%m_%d'))),
+            'maxBytes': 1024 * 1024 * 5,  # 文件大小
+            'backupCount': 5,  # 备份数
+            'formatter': 'standard',  # 输出格式
+        },
+        # 输出info日志
+        'info': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(log_path, 'info-{}.log'.format(time.strftime('%Y_%m_%d'))),
+            'maxBytes': 1024 * 1024 * 5,
+            'backupCount': 5,
+            'formatter': 'standard',
+        },
+        # 控制台输出
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard'
+        },
+    },
+    # 配置用哪几种 handlers 来处理日志
+    'loggers': {
+        # 类型 为 django 处理所有类型的日志， 默认调用
+        'django': {
+            # 默认记录系统日志并输出到控制台
+            'handlers': ['default', 'console'],
+            'level': 'INFO',
+            'propagate': False
+        },
+        # log 调用时需要当作参数传入
+        'log': {
+            # 配置手动添加的日志
+            'handlers': ['error', 'info', 'console', 'default'],
+            'level': 'INFO',
+            'propagate': True
+        },
+    }
+}

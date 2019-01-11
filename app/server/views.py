@@ -1,5 +1,6 @@
 import csv
 import json
+import logging
 from io import TextIOWrapper
 
 from django.urls import reverse
@@ -55,10 +56,15 @@ class GuidelineView(SuperUserMixin, LoginRequiredMixin, TemplateView):
 class DataUpload(SuperUserMixin, LoginRequiredMixin, TemplateView):
     template_name = 'admin/dataset_upload.html'
 
+    def __init__(self):
+        super(DataUpload, self).__init__()
+        self.logger = logging.getLogger('log')
+
     def post(self, request, *args, **kwargs):
         project = get_object_or_404(Project, pk=kwargs.get('project_id'))
         import_format = request.POST['format']
         try:
+            self.logger.info('upload format: ' + import_format)
             if import_format == 'csv':
                 form_data = TextIOWrapper(
                     request.FILES['file'].file, encoding='utf-8')
@@ -81,7 +87,8 @@ class DataUpload(SuperUserMixin, LoginRequiredMixin, TemplateView):
                     for entry in form_data
                 ])
             return HttpResponseRedirect(reverse('dataset', args=[project.id]))
-        except:
+        except Exception as e:
+            self.logger.error('upload error', e.__cause__)
             return HttpResponseRedirect(reverse('upload', args=[project.id]))
 
 
