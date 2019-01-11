@@ -1,4 +1,5 @@
 import string
+import logging
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
@@ -141,6 +142,7 @@ class Label(models.Model):
 class Document(models.Model):
     text = models.TextField()
     project = models.ForeignKey(Project, related_name='documents', on_delete=models.CASCADE)
+    logger = logging.getLogger('log')
 
     def get_annotations(self):
         if self.project.is_type_of(Project.DOCUMENT_CLASSIFICATION):
@@ -174,6 +176,8 @@ class Document(models.Model):
             for i in range(a.start_offset, a.end_offset):
                 if i == a.start_offset:
                     dataset[i][2] = 'B-{}'.format(a.label.text)
+                # elif i == a.end_offset - 1:
+                #     dataset[i][2] = 'E-{}'.format(a.label.text)
                 else:
                     dataset[i][2] = 'I-{}'.format(a.label.text)
         return dataset
@@ -205,8 +209,20 @@ class Document(models.Model):
     def make_dataset_for_sequence_labeling_json(self):
         annotations = self.get_annotations()
         entities = [(a.start_offset, a.end_offset, a.label.text) for a in annotations]
+        char_dict = [[ch, 'O'] for ch in self.text]
+        for a in annotations:
+            for i in range(a.start_offset, a.end_offset):
+                if i == a.start_offset:
+                    char_dict[i][1] = 'B-{}'.format(a.label.text)
+                # elif i == a.end_offset - 1:
+                #     char_dict[i][1] = 'E-{}'.format(a.label.text)
+                else:
+                    char_dict[i][1] = 'I-{}'.format(a.label.text)
+        result = ''
+        for item in char_dict:
+            result = result + item[0] + ' ' + item[1] + '\n'
         username = annotations[0].user.username
-        dataset = {'doc_id': self.id, 'text': self.text, 'entities': entities, 'username': username}
+        dataset = {'doc_id': self.id, 'text': self.text, 'entities': entities, 'result': result, 'username': username}
         return dataset
 
     def make_dataset_for_seq2seq_json(self):
@@ -215,6 +231,41 @@ class Document(models.Model):
         username = annotations[0].user.username
         dataset = {'doc_id': self.id, 'text': self.text, 'sentences': sentences, 'username': username}
         return dataset
+
+    def to_bio(self):
+        return self.make_dataset_bio()
+
+    def make_dataset_bio(self):
+        if self.project.is_type_of(Project.DOCUMENT_CLASSIFICATION):
+            return self.make_dataset_for_classification_bio()
+        elif self.project.is_type_of(Project.SEQUENCE_LABELING):
+            return self.make_dataset_for_sequence_labeling_bio()
+        elif self.project.is_type_of(Project.Seq2seq):
+            return self.make_dataset_for_seq2seq_bio()
+
+    def make_dataset_for_classification_bio(self):
+        self.logger.warning('not implemented bio for classification')
+        return ''
+
+    def make_dataset_for_sequence_labeling_bio(self):
+        annotations = self.get_annotations()
+        char_dict = [[ch, 'O'] for ch in self.text]
+        for a in annotations:
+            for i in range(a.start_offset, a.end_offset):
+                if i == a.start_offset:
+                    char_dict[i][1] = 'B-{}'.format(a.label.text)
+                # elif i == a.end_offset - 1:
+                #     char_dict[i][1] = 'E-{}'.format(a.label.text)
+                else:
+                    char_dict[i][1] = 'I-{}'.format(a.label.text)
+        result = ''
+        for item in char_dict:
+            result = result + item[0] + ' ' + item[1] + '\n'
+        return result
+
+    def make_dataset_for_seq2seq_bio(self):
+        self.logger.warning('not implemented bio for seq2seq')
+        return ''
 
     def __str__(self):
         return self.text[:50]

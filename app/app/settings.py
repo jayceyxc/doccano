@@ -211,6 +211,7 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 5,  # 文件大小
             'backupCount': 5,  # 备份数
             'formatter': 'standard',  # 输出格式
+            'encoding': 'utf8',
         },
         # 输出错误日志
         'error': {
@@ -221,6 +222,7 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 5,  # 文件大小
             'backupCount': 5,  # 备份数
             'formatter': 'standard',  # 输出格式
+            'encoding': 'utf8',
         },
         # 输出info日志
         'info': {
@@ -230,6 +232,7 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 5,
             'backupCount': 5,
             'formatter': 'standard',
+            'encoding': 'utf8',
         },
         # 控制台输出
         'console': {

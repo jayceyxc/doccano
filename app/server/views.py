@@ -1,6 +1,9 @@
 import csv
 import json
 import logging
+import xlrd
+import xlwt
+import openpyxl
 from io import TextIOWrapper
 
 from django.urls import reverse
@@ -65,27 +68,42 @@ class DataUpload(SuperUserMixin, LoginRequiredMixin, TemplateView):
         import_format = request.POST['format']
         try:
             self.logger.info('upload format: ' + import_format)
+            upload_file_name = request.FILES['file'].name
+            self.logger.info(u'上传文件名：' + upload_file_name)
             if import_format == 'csv':
                 form_data = TextIOWrapper(
                     request.FILES['file'].file, encoding='utf-8')
-                if project.is_type_of(Project.SEQUENCE_LABELING):
-                    Document.objects.bulk_create([
-                        Document(text=line.strip(), project=project)
-                        for line in form_data
-                    ])
-                else:
-                    reader = csv.reader(form_data)
-                    Document.objects.bulk_create([
-                        Document(text=line[0].strip(), project=project)
-                        for line in reader
-                    ])
-
+                reader = csv.reader(form_data)
+                Document.objects.bulk_create([
+                    Document(text=line[0].strip(), project=project)
+                    for line in reader
+                ])
             elif import_format == 'json':
                 form_data = request.FILES['file'].file
                 Document.objects.bulk_create([
                     Document(text=json.loads(entry)['text'], project=project)
                     for entry in form_data
                 ])
+            elif import_format == 'txt':
+                form_data = TextIOWrapper(
+                    request.FILES['file'].file, encoding='utf-8')
+                Document.objects.bulk_create([
+                    Document(text=line.strip(), project=project)
+                    for line in form_data
+                ])
+            elif import_format == 'excel':
+                form_data = TextIOWrapper(
+                    request.FILES['file'].file, encoding='utf-8')
+                data = form_data.readlines()
+                workbook = xlrd.open_workbook(file_contents=form_data.readlines())
+                # openpyxl.load_workbook(filename=form_data)
+                for sheet_name in workbook.sheet_names():
+                    worksheet = workbook.sheet_by_name(sheet_name=sheet_name)
+                    for i in range(worksheet.nrows):
+                        content = worksheet.cell(colx=0, rowx=i).value
+                        content = content.strip()
+                        self.logger.info(content)
+
             return HttpResponseRedirect(reverse('dataset', args=[project.id]))
         except Exception as e:
             self.logger.error('upload error', e.__cause__)
@@ -98,17 +116,24 @@ class DataDownload(SuperUserMixin, LoginRequiredMixin, TemplateView):
 
 class DataDownloadFile(SuperUserMixin, LoginRequiredMixin, View):
 
+    def __init__(self):
+        super(DataDownloadFile, self).__init__()
+        self.logger = logging.getLogger('log')
+
     def get(self, request, *args, **kwargs):
         project_id = self.kwargs['project_id']
         project = get_object_or_404(Project, pk=project_id)
         docs = project.get_documents(is_null=False).distinct()
         export_format = request.GET.get('format')
         filename = '_'.join(project.name.lower().split())
+        self.logger.info('download data file format: ' + export_format)
         try:
             if export_format == 'csv':
                 response = self.get_csv(filename, docs)
             elif export_format == 'json':
                 response = self.get_json(filename, docs)
+            elif export_format == 'bio':
+                response = self.get_bio_text(filename, docs)
             return response
         except:
             return HttpResponseRedirect(reverse('download', args=[project.id]))
@@ -127,6 +152,14 @@ class DataDownloadFile(SuperUserMixin, LoginRequiredMixin, View):
         for d in docs:
             dump = json.dumps(d.to_json(), ensure_ascii=False)
             response.write(dump + '\n') # write each json object end with a newline
+        print('dump done')
+        return response
+
+    def get_bio_text(self, filename, docs):
+        response = HttpResponse(content_type='text/plain')
+        response['Content-Disposition'] = 'attachment; filename="{}.txt"'.format(filename)
+        for d in docs:
+            response.write(d.to_bio() + '\n') # write each text end with a newline
         print('dump done')
         return response
 
